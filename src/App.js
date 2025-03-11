@@ -1,25 +1,86 @@
-import logo from './logo.svg';
-import './App.css';
+import React, { useReducer, useEffect, useMemo, useContext, useCallback, useState } from 'react';
+import { ThemeProvider, ThemeContext } from './context/ThemeContext';
+import TaskForm from './components/TaskForm';
+import TaskList from './components/TaskList';
+import ThemeToggle from './components/ThemeToggle';
+import Notification from './components/Notification';
 
-function App() {
+const initialTasks = JSON.parse(localStorage.getItem('tasks')) || [];
+
+const reducer = (state, action) => {
+  switch (action.type) {
+    case 'ADD_TASK':
+      return [...state, action.payload];
+    case 'DELETE_TASK':
+      return state.filter(task => task.id !== action.payload);
+    case 'TOGGLE_COMPLETE':
+      return state.map(task =>
+        task.id === action.payload ? { ...task, completed: !task.completed } : task
+      );
+    case 'TOGGLE_EDIT':
+      return state.map(task =>
+        task.id === action.payload ? { ...task, isEditing: !task.isEditing } : task
+      );
+    case 'EDIT_TASK':
+      return state.map(task =>
+        task.id === action.payload.id ? { ...task, text: action.payload.text, isEditing: false } : task
+      );
+    default:
+      return state;
+  }
+};
+
+export default function App() {
+  const [tasks, dispatch] = useReducer(reducer, initialTasks);
+  const { darkMode } = useContext(ThemeContext);
+  const [notification, setNotification] = useState('');
+
+  useEffect(() => {
+    localStorage.setItem('tasks', JSON.stringify(tasks));
+  }, [tasks]);
+
+  useEffect(() => {
+    document.body.className = darkMode ? 'dark' : 'light';
+  }, [darkMode]);
+
+  const completedTasks = useMemo(() => tasks.filter(task => task.completed), [tasks]);
+
+  const handleDelete = useCallback((id) => {
+    dispatch({ type: 'DELETE_TASK', payload: id });
+    setNotification('Task deleted successfully');
+    setTimeout(() => setNotification(''), 3000);
+  }, []);
+
+  const handleToggle = useCallback((id) => {
+    dispatch({ type: 'TOGGLE_COMPLETE', payload: id });
+  }, []);
+
+  const handleToggleEdit = useCallback((id) => {
+    dispatch({ type: 'TOGGLE_EDIT', payload: id });
+  }, []);
+
+  const handleEditTask = useCallback((id, text) => {
+    dispatch({ type: 'EDIT_TASK', payload: { id, text } });
+    setNotification('Task updated successfully');
+    setTimeout(() => setNotification(''), 3000);
+  }, []);
+
+  const handleAddTask = useCallback((task) => {
+    dispatch({ type: 'ADD_TASK', payload: task });
+    setNotification('Task added successfully');
+    setTimeout(() => setNotification(''), 3000);
+  }, []);
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <ThemeProvider>
+      <div className="container">
+        <h1>Task Manager</h1>
+        <ThemeToggle />
+        <Notification message={notification} />
+        <TaskForm dispatch={handleAddTask} />
+        <TaskList tasks={tasks} onDelete={handleDelete} onToggle={handleToggle} onToggleEdit={handleToggleEdit} onEditTask={handleEditTask} />
+        <h3>Completed Tasks: {completedTasks.length}</h3>
+      </div>
+    </ThemeProvider>
   );
 }
-
-export default App;
