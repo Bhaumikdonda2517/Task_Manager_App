@@ -4,6 +4,7 @@ import TaskForm from './components/TaskForm';
 import TaskList from './components/TaskList';
 import ThemeToggle from './components/ThemeToggle';
 import Notification from './components/Notification';
+import TaskFilter from './components/TaskFilter';
 
 const initialTasks = JSON.parse(localStorage.getItem('tasks')) || [];
 
@@ -34,6 +35,7 @@ export default function App() {
   const [tasks, dispatch] = useReducer(reducer, initialTasks);
   const { darkMode } = useContext(ThemeContext);
   const [notification, setNotification] = useState('');
+  const [filter, setFilter] = useState('ALL');
 
   useEffect(() => {
     localStorage.setItem('tasks', JSON.stringify(tasks));
@@ -43,7 +45,16 @@ export default function App() {
     document.body.className = darkMode ? 'dark' : 'light';
   }, [darkMode]);
 
-  const completedTasks = useMemo(() => tasks.filter(task => task.completed), [tasks]);
+  const filteredTasks = useMemo(() => {
+    switch (filter) {
+      case 'COMPLETED':
+        return tasks.filter(task => task.completed);
+      case 'INCOMPLETE':
+        return tasks.filter(task => !task.completed);
+      default:
+        return tasks;
+    }
+  }, [tasks, filter]);
 
   const handleDelete = useCallback((id) => {
     dispatch({ type: 'DELETE_TASK', payload: id });
@@ -78,8 +89,9 @@ export default function App() {
         <ThemeToggle />
         <Notification message={notification} />
         <TaskForm dispatch={handleAddTask} />
-        <TaskList tasks={tasks} onDelete={handleDelete} onToggle={handleToggle} onToggleEdit={handleToggleEdit} onEditTask={handleEditTask} />
-        <h3>Completed Tasks: {completedTasks.length}</h3>
+        <TaskFilter filter={filter} setFilter={setFilter} />
+        <TaskList tasks={filteredTasks} onDelete={handleDelete} onToggle={handleToggle} onToggleEdit={handleToggleEdit} onEditTask={handleEditTask} />
+        <h3>Completed Tasks: {tasks.filter(task => task.completed).length}</h3>
       </div>
     </ThemeProvider>
   );
